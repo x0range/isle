@@ -14,7 +14,7 @@ class InsuranceSimulation():
                                                 "norm_profit_markup": 0.15, \
                                                 "mean_contract_runtime": 50, \
                                                 "contract_runtime_halfspread": 0, \
-                                                "max_time": 1000, \
+                                                "max_time": 200, \
                                                 "money_supply": 2000000000, \
                                                 "event_time_mean_separation": 100/3., \
                                                 "expire_immediately": True, \
@@ -128,6 +128,9 @@ class InsuranceSimulation():
                     affected_contracts = [contract for insurer in self.insurancefirms for contract in insurer.underwritten_contracts if contract.category == categ_id]
                     no_affected = len(affected_contracts)
                     damage = self.damage_distribution.rvs()
+                    
+                    damage = damage / 2. + 0.25
+                    
                     print("**** PERIL ", damage)
                     damagevalues = np.random.beta(1, 1./damage -1, size=no_affected)
                     uniformvalues = np.random.uniform(0, 1, size=no_affected)

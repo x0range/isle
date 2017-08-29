@@ -13,17 +13,17 @@ class InsuranceSimulation():
                                                 "no_riskmodels": 2, \
                                                 "norm_profit_markup": 0.15, \
                                                 "mean_contract_runtime": 50, \
-                                                "contract_runtime_halfspread": 0, \
-                                                "max_time": 200, \
+                                                "contract_runtime_halfspread": 10, \
+                                                "max_time": 2000, \
                                                 "money_supply": 2000000000, \
-                                                "event_time_mean_separation": 100/3., \
+                                                "event_time_mean_separation": 400/1., \
                                                 "expire_immediately": True, \
                                                 "risk_factors_present": False, \
                                                 "risk_factor_lower_bound": 0.4, \
                                                 "risk_factor_upper_bound": 0.6, \
                                                 "initial_acceptance_threshold": 0.5, \
                                                 "acceptance_threshold_friction": 0.9, \
-                                                "initial_agent_cash": 10000, \
+                                                "initial_agent_cash": 100000, \
                                                 "no_risks": 20000 }):
         
         # save parameters
@@ -129,7 +129,9 @@ class InsuranceSimulation():
                     no_affected = len(affected_contracts)
                     damage = self.damage_distribution.rvs()
                     
-                    damage = damage / 2. + 0.25
+                    #
+                    #damage = damage / 2. + 0.25
+                    #
                     
                     print("**** PERIL ", damage)
                     damagevalues = np.random.beta(1, 1./damage -1, size=no_affected)
@@ -175,7 +177,10 @@ class InsuranceSimulation():
         
     def solicit_insurance_requests(self, id, cash):
         self.insurancefirm_new_weights[id] = cash
+        if self.insurancefirm_weights[id] > 30:
+            self.insurancefirm_weights[id] = 30
         risks_to_be_sent = self.risks[:self.insurancefirm_weights[id]]
+        print(len(risks_to_be_sent))
         self.risks = self.risks[self.insurancefirm_weights[id]:]
         return risks_to_be_sent
 

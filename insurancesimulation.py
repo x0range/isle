@@ -12,11 +12,11 @@ class InsuranceSimulation():
                                                 "no_insurancefirms": 20, \
                                                 "no_riskmodels": 2, \
                                                 "norm_profit_markup": 0.15, \
-                                                "mean_contract_runtime": 50, \
-                                                "contract_runtime_halfspread": 0, \
-                                                "max_time": 200, \
+                                                "mean_contract_runtime": 30, \
+                                                "contract_runtime_halfspread": 10, \
+                                                "max_time": 600, \
                                                 "money_supply": 2000000000, \
-                                                "event_time_mean_separation": 100/3., \
+                                                "event_time_mean_separation": 200/1., \
                                                 "expire_immediately": True, \
                                                 "risk_factors_present": False, \
                                                 "risk_factor_lower_bound": 0.4, \

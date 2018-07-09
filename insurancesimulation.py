@@ -529,6 +529,8 @@ class InsuranceSimulation():
                 self.rc_event_schedule = eval(line)
                 found = True
         rfile.close()
+        return 0                # Ensure that we have different random seeds but identical risk profiles
+        assert False
         assert found, "rc event schedule for current replication ID number {0:d} not found in data file. Exiting.".format(self.replic_ID)
         rfile = open("data/replication_randomseed.dat","r")
         found = False

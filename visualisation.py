@@ -83,6 +83,7 @@ class InsuranceFirmAnimation(object):
 class visualisation(object):
     def __init__(self, history_logs_list):
         self.history_logs_list = history_logs_list
+        self.scatter_data = {}
         # unused data in history_logs
         #self.excess_capital = history_logs['total_excess_capital']
         #self.reinexcess_capital = history_logs['total_reinexcess_capital']
@@ -175,6 +176,70 @@ class visualisation(object):
         catbonds_number = np.median([history_logs['total_catbondsoperational'] for history_logs in self.history_logs_list],axis=0)
         return
 
+    def aux_clustered_exit_records(self, exits):
+        """Auxiliary method for creation of data series on clustered events such as firm market exits.
+                Will take an unclustered series and aggregate every series of non-zero elements into 
+                the first element of that series.
+            Arguments:
+                exits: numpy ndarray or list    - unclustered series
+            Returns:
+                numpy ndarray of the same length as argument "exits": the clustered series."""
+        exits2 = []
+        ci = False
+        cidx = 0
+        for ee in exits:
+            if ci:
+                exits2.append(0)
+                if ee > 0:
+                    exits2[cidx] += ee
+                else:
+                    ci = False
+            else:
+                exits2.append(ee)
+                if ee > 0:
+                    ci = True
+                    cidx = len(exits2) - 1
+        
+        return np.asarray(exits2, dtype=np.float64)
+
+    def populate_scatter_data(self):
+        """Method to generate data samples that do not have a time component (e.g. the size of bankruptcy events, i.e. 
+                how many firms exited each time.
+                The method saves these in the instance variable self.scatter_data. This variable is of type dict.
+            Arguments: None.
+            Returns: None."""
+        
+        """Record data on sizes of unrecovered_claims"""
+        self.scatter_data["unrecovered_claims"] = []
+        for hlog in self.history_logs_list:         # for each replication
+            urc = np.diff(np.asarray(hlog["cumulative_unrecovered_claims"]))
+            self.scatter_data["unrecovered_claims"] = np.hstack([self.scatter_data["unrecovered_claims"], np.extract(urc>0, urc)])
+        
+        """Record data on sizes of bankruptcy_events"""
+        self.scatter_data["bankruptcy_events"] = []
+        self.scatter_data["bankruptcy_events_relative"] = []
+        self.scatter_data["bankruptcy_events_clustered"] = []
+        self.scatter_data["bankruptcy_events_relative_clustered"] = []
+        for hlog in self.history_logs_list:         # for each replication
+            """Obtain numbers of operational firms. This is for computing the relative share of exiting firms."""
+            in_op = np.asarray(hlog["total_operational"])[:-1]
+            rein_op = np.asarray(hlog["total_reinoperational"])[:-1]
+            op = in_op + rein_op
+            
+            """Obtain exits and relative exits"""
+            exits = np.diff(np.asarray(hlog["cumulative_market_exits"], dtype=np.float64))
+            rel_exits = exits / op
+            
+            """Obtain clustered exits (absolute and relative)"""
+            exits2 = self.aux_clustered_exit_records(exits)            
+            rel_exits2 = exits2 / op
+            
+            """Record data"""
+            self.scatter_data["bankruptcy_events"] = np.hstack([self.scatter_data["bankruptcy_events"], np.extract(exits>0, exits)])
+            self.scatter_data["bankruptcy_events_relative"] = np.hstack([self.scatter_data["bankruptcy_events_relative"], np.extract(rel_exits>0, rel_exits)])
+            self.scatter_data["bankruptcy_events_clustered"] = np.hstack([self.scatter_data["bankruptcy_events_clustered"], np.extract(exits2>0, exits2)])
+            self.scatter_data["bankruptcy_events_relative_clustered"] = np.hstack([self.scatter_data["bankruptcy_events_relative_clustered"], np.extract(rel_exits2>0, rel_exits2)])
+            
     def show(self):
         plt.show()
         return
@@ -251,8 +316,53 @@ class CDF_distribution_plot():
             VDP = visualisation_distribution_plots.CDFDistribution(series_x)
             #VDP.make_figure(upper_quantile=self.upper_quantile, lower_quantile=self.lower_quantile) 
             c_xlabel = "" if i < len(self.vis_list) - 1 else xlabel
-            VDP.plot(ax=self.ax[i], ylabel="cCDF " + str(i) + "RM", xlabel=c_xlabel, upper_quantile=self.upper_quantile, lower_quantile=self.lower_quantile, color=self.colour_list[i], plot_cCDF=True)
+            VDP.plot(ax=self.ax[i], ylabel="cCDF " + str(i+1) + "RM", xlabel=c_xlabel, upper_quantile=self.upper_quantile, lower_quantile=self.lower_quantile, color=self.colour_list[i], plot_cCDF=True)
         
+        """Finish and save figure"""
+        self.fig.tight_layout()
+        self.fig.savefig(filename + ".pdf")
+        self.fig.savefig(filename + ".png", density=300)
+
+
+"""Class for CDF/cCDF distribution plots using auxiliary class from visualisation_distribution_plots.py. 
+    This class arranges as many such plots stacked in one diagram as there are series in the history 
+    logs they are created from, i.e. len(vis_list)."""
+class Histogram_plot():
+    def __init__(self, vis_list, colour_list, variable="bankruptcy_events"):
+        """Constructor.
+            Arguments:
+                vis_list: list of visualisation objects - objects hilding the data
+                colour list: list of str                - colors to be used for each plot
+                variable: string (must be a valid dict key in vis_list[i].scatter_data
+                                                        - the history log variable for which the distribution is plotted
+            Returns class instance."""
+        self.vis_list = vis_list
+        self.colour_list = colour_list
+        self.variable = variable
+    
+    def generate_plot(self, xlabel=None, filename=None):
+        """Method to generate and save the plot.
+            Arguments:
+                xlabel: str or None     - the x axis label
+                filename: str or None   - the filename without ending
+            Returns None."""
+
+        """Set x axis label and filename to default if not provided"""
+        xlabel = xlabel if xlabel is not None else self.variable
+        filename = filename if filename is not None else "Histogram_plot_" + self.variable
+        
+        """Create figure with correct number of subplots"""
+        self.fig, self.ax = plt.subplots(nrows=len(self.vis_list))
+        
+        """Loop through simulation record series, populate subplot by subplot"""
+        for i in range(len(self.vis_list)):
+            """Extract records from history logs"""
+            scatter_data = self.vis_list[i].scatter_data[self.variable]
+            """Create Histogram object and populate the subfigure using it"""
+            H = visualisation_distribution_plots.Histogram(scatter_data)
+            c_xlabel = "" if i < len(self.vis_list) - 1 else xlabel
+            H.plot(ax=self.ax[i], ylabel="cCDF " + str(i+1) + "RM", xlabel=c_xlabel, color=self.colour_list[i])
+            
         """Finish and save figure"""
         self.fig.tight_layout()
         self.fig.savefig(filename + ".pdf")
@@ -297,7 +407,7 @@ if __name__ == "__main__":
         #    vis.reinsurer_time_series(runs=[i])
         #    vis.show()
         vis_list = []
-        filenames = ["./data/"+x+"_history_logs.dat" for x in ["one","two","three","four"]]
+        filenames = ["./data/" + x + "_history_logs.dat" for x in ["one","two","three","four"]]
         for filename in filenames:
             with open(filename,'r') as rfile:
                 history_logs_list = [eval(k) for k in rfile] # one dict on each line
@@ -318,3 +428,17 @@ if __name__ == "__main__":
         CP.generate_plot()
         CP = CDF_distribution_plot(vis_list, colour_list, variable="reinsurance_firms_cash", timestep=-1, plot_cCDF=True)  
         CP.generate_plot()
+    
+    if args.bankruptcydistribution:
+        for vis in vis_list:
+            vis.populate_scatter_data()
+        HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events")  
+        HP.generate_plot()
+        HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_relative")  
+        HP.generate_plot()
+        HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_clustered")  
+        HP.generate_plot()
+        HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_relative_clustered")  
+        HP.generate_plot()
+        HP = Histogram_plot(vis_list, colour_list, variable="unrecovered_claims")  
+        HP.generate_plot()

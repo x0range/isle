@@ -2,8 +2,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import visualisation_distribution_plots
 import argparse
-
+import pdb
 
 
 class TimeSeries(object):
@@ -201,6 +202,61 @@ class compare_riskmodels(object):
     def save(self):
         # logic to save plots
         pass
+
+        
+"""Class for CDF/cCDF distribution plots using auxiliary class from visualisation_distribution_plots.py. 
+    This class arranges as many such plots stacked in one diagram as there are series in the history 
+    logs they are created from, i.e. len(vis_list)."""
+class CDF_distribution_plot():
+    def __init__(self, vis_list, colour_list, quantiles=[.25, .75], variable="reinsurance_firms_cash", timestep=-1, plot_cCDF=True):
+        """Constructor.
+            Arguments:
+                vis_list: list of visualisation objects - objects hilding the data
+                colour list: list of str                - colors to be used for each plot
+                quantiles: list of float of length 2    - lower and upper quantile for inter quantile range in plot
+                variable: string (must be a valid dict key in vis_list[i].history_logs_list
+                                                        - the history log variable for which the distribution is plotted
+                                                            (will be either "insurance_firms_cash" or "reinsurance_firms_cash")
+                timestep: int                           - timestep at which the distribution to be plotted is taken
+                plot_cCDF: bool                         - plot survival function (cCDF) instead of CDF
+            Returns class instance."""
+        self.vis_list = vis_list
+        self.colour_list = colour_list
+        self.lower_quantile, self.upper_quantile = quantiles
+        self.variable = variable
+        self.timestep = timestep
+    
+    def generate_plot(self, xlabel=None, filename=None):
+        """Method to generate and save the plot.
+            Arguments:
+                xlabel: str or None     - the x axis label
+                filename: str or None   - the filename without ending
+            Returns None."""
+
+        """Set x axis label and filename to default if not provided"""
+        xlabel = xlabel if xlabel is not None else self.variable
+        filename = filename if filename is not None else "CDF_plot_" + self.variable
+        
+        """Create figure with correct number of subplots"""
+        self.fig, self.ax = plt.subplots(nrows=len(self.vis_list))
+        
+        """Loop through simulation record series, populate subplot by subplot"""
+        for i in range(len(self.vis_list)):
+            """Extract firm records from history logs"""
+            series_x = [replication[self.variable][self.timestep] for replication in self.vis_list[i].history_logs_list]
+            """Extract the capital holdings from the tuple"""
+            for j in range(len(series_x)):
+                series_x[j] = [firm[0] for firm in series_x[j] if firm[2]]
+            """Create CDFDistribution object and populate the subfigure using it"""
+            VDP = visualisation_distribution_plots.CDFDistribution(series_x)
+            #VDP.make_figure(upper_quantile=self.upper_quantile, lower_quantile=self.lower_quantile) 
+            c_xlabel = "" if i < len(self.vis_list) - 1 else xlabel
+            VDP.plot(ax=self.ax[i], ylabel="cCDF " + str(i) + "RM", xlabel=c_xlabel, upper_quantile=self.upper_quantile, lower_quantile=self.lower_quantile, color=self.colour_list[i], plot_cCDF=True)
+        
+        """Finish and save figure"""
+        self.fig.tight_layout()
+        self.fig.savefig(filename + ".pdf")
+        self.fig.savefig(filename + ".png", density=300)
     
 if __name__ == "__main__":
 
@@ -209,6 +265,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Model the Insurance sector')
     parser.add_argument("--single", action="store_true", help="plot time series of a single run of the insurance model")
     parser.add_argument("--comparison", action="store_true", help="plot the result of an ensemble of replicatons of the insurance model")
+    parser.add_argument("--firmdistribution", action="store_true", help="plot the cCDFs of firm size distributions with quantiles indicating variation across ensemble")
+    parser.add_argument("--bankruptcydistribution", action="store_true", help="plot the histograms of bankruptcy events across ensemble")
 
     args = parser.parse_args()
 
@@ -228,8 +286,8 @@ if __name__ == "__main__":
         N = len(history_logs_list)
 
 
-    if args.comparison:
-
+    if args.comparison or args.firmdistribution or args.bankruptcydistribution:
+    
         # for each run, generate an animation and time series for insurer and reinsurer
         # TODO: provide some way for these to be lined up nicely rather than having to manually arrange screen
         #for i in range(N):
@@ -245,8 +303,18 @@ if __name__ == "__main__":
                 history_logs_list = [eval(k) for k in rfile] # one dict on each line
                 vis_list.append(visualisation(history_logs_list))
 
-        colour_list = ['blue', 'yellow', 'red', 'green']
+        colour_list = ['red', 'blue', 'green', 'yellow']
+    #pdb.set_trace()
+            
+    if args.comparison:
+        
         cmp_rsk = compare_riskmodels(vis_list, colour_list)
         cmp_rsk.create_insurer_timeseries(percentiles=[10,90])
         cmp_rsk.create_reinsurer_timeseries(percentiles=[10,90])
         cmp_rsk.show()
+    
+    if args.firmdistribution:
+        CP = CDF_distribution_plot(vis_list, colour_list, variable="insurance_firms_cash", timestep=-1, plot_cCDF=True)  
+        CP.generate_plot()
+        CP = CDF_distribution_plot(vis_list, colour_list, variable="reinsurance_firms_cash", timestep=-1, plot_cCDF=True)  
+        CP.generate_plot()

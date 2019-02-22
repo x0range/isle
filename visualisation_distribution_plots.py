@@ -6,6 +6,7 @@
 from scipy.stats import expon
 import numpy as np
 import matplotlib.pyplot as plt
+import pdb
 
 """Class for plots of ensembles of distributions as CDF (cumulative distribution function) or cCDF (complementary 
     cumulative distribution function) with mean, median, and quantiles"""
@@ -19,10 +20,11 @@ class CDFDistribution():
         self.samples_x = []
         self.samples_y = []
         for x in samples_x:
-            x = np.asarray(x, dtype=np.float64)
-            y = (np.arange(len(x), dtype=np.float64)+1) / len(x)
-            self.samples_x.append(x)
-            self.samples_y.append(y)
+            if len(x) > 0:
+                x = np.sort(np.asarray(x, dtype=np.float64))
+                y = (np.arange(len(x), dtype=np.float64)+1) / len(x)
+                self.samples_x.append(x)
+                self.samples_y.append(y)
         self.series_y = None
         self.median_x = None
         self.mean_x = None
@@ -31,6 +33,7 @@ class CDFDistribution():
         self.quantile_series_y_upper = None
         
     def make_figure(self, upper_quantile=.25, lower_quantile=.75):
+        #pdb.set_trace()
         """Method to do the necessary computations to create the CDF plot (incl. mean, median, quantiles.
            This method populates the variables that are plotted.
             Arguments:
@@ -43,7 +46,7 @@ class CDFDistribution():
 
         """Obtain x coordinates corresponding to the full ordered set of all y values (self.series_y) for each series"""
         set_of_series_x = []
-        for i in range(len(samples_x)):
+        for i in range(len(self.samples_x)):
             x = [self.samples_x[i][np.argmax(self.samples_y[i]>=y)] if self.samples_y[i][0]<=y else 0 for y in self.series_y]
             set_of_series_x.append(x)
             
@@ -63,6 +66,9 @@ class CDFDistribution():
         #self.quantile_series_y_lower = [self.series_y[np.argmax(quantile_lower_x>=x)] if quantile_lower_x[0]<=x else 0 for x in self.quantile_series_x]
         self.quantile_series_y_lower = np.asarray([self.series_y[np.argmax(quantile_lower_x>=x)] if np.sum(np.argmax(quantile_lower_x>=x))>0 else np.max(self.series_y) for x in self.quantile_series_x])
         self.quantile_series_y_upper = np.asarray([self.series_y[np.argmax(quantile_upper_x>=x)] if quantile_upper_x[0]<=x else 0 for x in self.quantile_series_x])
+        
+        """The first value of lower must be zero"""
+        self.quantile_series_y_lower[0] = 0.0
     
     def reverse_CDF(self):
         """Method to reverse the CDFs and obtain the complementary CDFs (survival functions) instead.
@@ -143,7 +149,7 @@ class Histogram():
             ax = fig.add_subplot(111)
         
         """Plot"""
-        ax.hist(x, bins=num_bins, color=color)
+        ax.hist(self.sample_x, bins=num_bins, color=color)
 
         """Set plot attributes"""
         ax.set_ylabel(ylabel)
@@ -160,11 +166,10 @@ class Histogram():
 
 
 if __name__ == "__main__":
-    
     """Unit test for CDF Distribution plot"""
     samples_x = []
     for i in range(20):
-        x = np.sort(expon.rvs(0.1, size=100))
+        x = expon.rvs(0.1, size=100)
         samples_x.append(x)
     
     C = CDFDistribution(samples_x)

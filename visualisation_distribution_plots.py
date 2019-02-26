@@ -94,6 +94,10 @@ class CDFDistribution():
                 plot_cCDF: bool                 - plot survival function (cCDF) instead of CDF
             Returns: None."""
         
+        """If data set is empty, return without plotting"""
+        if self.samples_x == []:
+            return
+            
         """Create figure if none was provided"""
         if ax is None:
             fig = plt.figure()
@@ -131,7 +135,7 @@ class Histogram():
     def __init__(self, sample_x):
         self.sample_x = sample_x
     
-    def plot(self, ax=None, ylabel="PDF(x)", xlabel="x", num_bins=50, show=False, outputname=None, color="C2"):
+    def plot(self, ax=None, ylabel="PDF(x)", xlabel="x", num_bins=50, show=False, outputname=None, color="C2", logscale=False, xlims=None):
         """Method to compile the plot. The plot is added to a provided matplotlib axes object or a new one is created.
             Arguments: 
                 ax: matplitlib axes             - the system of coordinates into which to plot
@@ -141,6 +145,8 @@ class Histogram():
                 show: bool                      - show plot
                 outputname: str                 - output file name without ending
                 color: str or other admissible matplotlib color label - color to use for the plot
+                logscale: bool                  - y axis logscale
+                xlims: tuple, array of len 2, or none - x axis limits
             Returns: None."""
         
         """Create figure if none was provided"""
@@ -154,6 +160,14 @@ class Histogram():
         """Set plot attributes"""
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
+        
+        """Set xlim if requested"""
+        if xlims is not None:
+            ax.set_xlim(xlims[0], xlims[1])
+
+        """Set yscale to log if requested"""
+        if logscale:
+            ax.set_yscale("log")
         
         """Save if filename provided"""
         if outputname is not None:

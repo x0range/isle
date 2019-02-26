@@ -5,7 +5,7 @@ import matplotlib.animation as animation
 import visualisation_distribution_plots
 import argparse
 import pdb
-
+import isleconfig
 
 class TimeSeries(object):
     def __init__(self, series_list, title="",xlabel="Time", colour='k', axlst=None, fig=None, percentiles=None, alpha=0.7):
@@ -340,7 +340,7 @@ class Histogram_plot():
         self.colour_list = colour_list
         self.variable = variable
     
-    def generate_plot(self, xlabel=None, filename=None):
+    def generate_plot(self, xlabel=None, filename=None, logscale=False):
         """Method to generate and save the plot.
             Arguments:
                 xlabel: str or None     - the x axis label
@@ -354,6 +354,23 @@ class Histogram_plot():
         """Create figure with correct number of subplots"""
         self.fig, self.ax = plt.subplots(nrows=len(self.vis_list))
         
+        #pdb.set_trace()
+
+        """find max and min values"""
+        """combine all data sets"""
+        all_data = [np.asarray(vl.scatter_data[self.variable]) for vl in self.vis_list]
+        all_data = np.hstack(all_data)
+        
+        """Catch empty data sets"""
+        if len(all_data) == 0:
+            return    
+        #all_data = []
+        #for vl in self.vis_list:
+        #    for item in vl.scatter_data[self.variable]:
+        #        all_data += item
+        minmax = (np.min(all_data), np.max(all_data))
+        num_bins = min(25, len(np.unique(all_data)))
+        
         """Loop through simulation record series, populate subplot by subplot"""
         for i in range(len(self.vis_list)):
             """Extract records from history logs"""
@@ -361,7 +378,7 @@ class Histogram_plot():
             """Create Histogram object and populate the subfigure using it"""
             H = visualisation_distribution_plots.Histogram(scatter_data)
             c_xlabel = "" if i < len(self.vis_list) - 1 else xlabel
-            H.plot(ax=self.ax[i], ylabel="cCDF " + str(i+1) + "RM", xlabel=c_xlabel, color=self.colour_list[i])
+            H.plot(ax=self.ax[i], ylabel="Dens. " + str(i+1) + "RM", xlabel=c_xlabel, color=self.colour_list[i], num_bins=num_bins, logscale=logscale, xlims=minmax)
             
         """Finish and save figure"""
         self.fig.tight_layout()
@@ -426,19 +443,20 @@ if __name__ == "__main__":
     if args.firmdistribution:
         CP = CDF_distribution_plot(vis_list, colour_list, variable="insurance_firms_cash", timestep=-1, plot_cCDF=True)  
         CP.generate_plot()
-        CP = CDF_distribution_plot(vis_list, colour_list, variable="reinsurance_firms_cash", timestep=-1, plot_cCDF=True)  
-        CP.generate_plot()
+        if not isleconfig.simulation_parameters["reinsurance_off"]:
+            CP = CDF_distribution_plot(vis_list, colour_list, variable="reinsurance_firms_cash", timestep=-1, plot_cCDF=True)  
+            CP.generate_plot()
     
     if args.bankruptcydistribution:
         for vis in vis_list:
             vis.populate_scatter_data()
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events")  
-        HP.generate_plot()
+        HP.generate_plot(logscale=True)
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_relative")  
-        HP.generate_plot()
+        HP.generate_plot(logscale=True)
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_clustered")  
-        HP.generate_plot()
+        HP.generate_plot(logscale=True)
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_relative_clustered")  
-        HP.generate_plot()
+        HP.generate_plot(logscale=True)
         HP = Histogram_plot(vis_list, colour_list, variable="unrecovered_claims")  
-        HP.generate_plot()
+        HP.generate_plot(logscale=True)

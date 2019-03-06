@@ -442,21 +442,21 @@ if __name__ == "__main__":
     
     if args.firmdistribution:
         CP = CDF_distribution_plot(vis_list, colour_list, variable="insurance_firms_cash", timestep=-1, plot_cCDF=True)  
-        CP.generate_plot()
+        CP.generate_plot(xlabel="Firm size (capital)")
         if not isleconfig.simulation_parameters["reinsurance_off"]:
             CP = CDF_distribution_plot(vis_list, colour_list, variable="reinsurance_firms_cash", timestep=-1, plot_cCDF=True)  
-            CP.generate_plot()
+            CP.generate_plot(xlabel="Firm size (capital)")
     
     if args.bankruptcydistribution:
         for vis in vis_list:
             vis.populate_scatter_data()
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events")  
-        HP.generate_plot(logscale=True)
+        HP.generate_plot(logscale=True, xlabel="Number of bankruptcies")
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_relative")  
-        HP.generate_plot(logscale=True)
+        HP.generate_plot(logscale=True, xlabel="Share of bankrupt firms")
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_clustered")  
-        HP.generate_plot(logscale=True)
+        HP.generate_plot(logscale=True, xlabel="Number of bankruptcies")
         HP = Histogram_plot(vis_list, colour_list, variable="bankruptcy_events_relative_clustered")  
-        HP.generate_plot(logscale=True)
+        HP.generate_plot(logscale=True, xlabel="Share of bankrupt firms")
         HP = Histogram_plot(vis_list, colour_list, variable="unrecovered_claims")  
-        HP.generate_plot(logscale=True)
+        HP.generate_plot(logscale=True, xlabel="Damages not recovered")
